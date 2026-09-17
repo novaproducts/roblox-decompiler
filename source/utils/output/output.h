@@ -1,0 +1,106 @@
+#pragma once
+
+#include <chrono>
+#include <cstdio>
+#include <ctime>
+#include <windows.h>
+
+class logger_c
+{
+public:
+    void setup(const char* title)
+    {
+        SetConsoleTitleA(title);
+
+        HANDLE std_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD mode = 0;
+        if (GetConsoleMode(std_handle, &mode))
+        {
+            mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+            SetConsoleMode(std_handle, mode);
+        }
+
+        CONSOLE_FONT_INFOEX cfi{ };
+        cfi.cbSize = sizeof(cfi);
+        cfi.nFont = 0;
+        cfi.dwFontSize.X = 8;
+        cfi.dwFontSize.Y = 15;
+        cfi.FontFamily = FF_DONTCARE;
+        cfi.FontWeight = FW_NORMAL;
+        wcscpy_s(cfi.FaceName, L"Raster Fonts");
+        SetCurrentConsoleFontEx(std_handle, FALSE, &cfi);
+    }
+
+    template<typename... args_t>
+    void print(const char* format, args_t... args)
+    {
+        auto now = std::chrono::system_clock::now();
+        std::time_t time = std::chrono::system_clock::to_time_t(now);
+        tm local_tm{ };
+        localtime_s(&local_tm, &time);
+
+        std::printf("\x1b[38;2;130;90;180m[%02d/%02d/%04d %02d:%02d:%02d]\x1b[0m ",
+            local_tm.tm_mon + 1,
+            local_tm.tm_mday,
+            local_tm.tm_year + 1900,
+            local_tm.tm_hour,
+            local_tm.tm_min,
+            local_tm.tm_sec);
+
+        std::printf("\x1b[38;2;200;130;255m>\x1b[0m ");
+        std::printf("\x1b[38;2;230;215;255m");
+        std::printf(format, args...);
+        std::printf("\x1b[0m\n");
+    }
+
+    template<typename... args_t>
+    void log_level(const char* tag_color, const char* tag, const char* format, args_t... args)
+    {
+        auto now = std::chrono::system_clock::now();
+        std::time_t time = std::chrono::system_clock::to_time_t(now);
+        tm local_tm{ };
+        localtime_s(&local_tm, &time);
+
+        std::printf("\x1b[38;2;130;90;180m[%02d/%02d/%04d %02d:%02d:%02d]\x1b[0m ",
+            local_tm.tm_mon + 1,
+            local_tm.tm_mday,
+            local_tm.tm_year + 1900,
+            local_tm.tm_hour,
+            local_tm.tm_min,
+            local_tm.tm_sec);
+
+        std::printf("\x1b[0m[");
+        std::printf("%s", tag_color);
+        std::printf("%s", tag);
+        std::printf("\x1b[0m] ");
+        std::printf("\x1b[38;2;230;215;255m");
+        std::printf(format, args...);
+        std::printf("\x1b[0m\n");
+    }
+
+    template<typename... args_t>
+    void debug(const char* format, args_t... args)
+    {
+        log_level("\x1b[38;2;120;190;255m", "DEBUG", format, args...);
+    }
+
+    template<typename... args_t>
+    void info(const char* format, args_t... args)
+    {
+        log_level("\x1b[38;2;140;255;150m", "INFO", format, args...);
+    }
+
+    template<typename... args_t>
+    void warning(const char* format, args_t... args)
+    {
+        log_level("\x1b[38;2;255;230;120m", "WARNING", format, args...);
+    }
+
+    template<typename... args_t>
+    void error(const char* format, args_t... args)
+    {
+        log_level("\x1b[38;2;255;120;120m", "ERROR", format, args...);
+    }
+};
+
+inline logger_c g_logger{};
